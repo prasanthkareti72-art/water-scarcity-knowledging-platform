@@ -33,7 +33,9 @@ body {
         <div class="hbg"><img src="{% static 'images/header_images.jpg' %}" width="1010" height="200" alt="" /></div>
 
 		<font size="3" color="black"><center>{{ data|safe }}</center></font><br/>
+		{% if img %}
 		<img src="data:image/png;base64, {{ img }}" alt="" />
+		{% endif %}
 
        
   </body>

@@ -8,7 +8,8 @@ import pymysql
 from datetime import date
 import numpy as np
 
-global uname
+# Session initialization helper (compatibility)
+uname = None
 
 def Videos(request):
     if request.method == 'GET':
@@ -16,24 +17,32 @@ def Videos(request):
 
 def Download(request):
     if request.method == 'GET':
-        global fileList
         name = request.GET.get('requester', False)
-        with open("WaterApp/static/files/"+name, "rb") as file:
+        if not name:
+            return HttpResponse("File name not specified", status=400)
+        
+        # Prevent directory traversal
+        name = os.path.basename(name)
+        file_path = os.path.join("WaterApp/static/files", name)
+        
+        if not os.path.exists(file_path):
+            return HttpResponse("File not found", status=404)
+            
+        with open(file_path, "rb") as file:
             data = file.read()
-        file.close()        
-        response = HttpResponse(data,content_type='application/force-download')
-        response['Content-Disposition'] = 'attachment; filename='+name
+            
+        response = HttpResponse(data, content_type='application/force-download')
+        response['Content-Disposition'] = 'attachment; filename=' + name
         return response   
 
 def AccessAdvice(request):
     if request.method == 'GET':
-        global username
         output = '<table border=1 align=center width=100%><tr><th><font size="3" color="black">Expert Name</th><th><font size="3" color="black">Water Saving Techniques & Ideas</th>'
         output+='<th><font size="3" color="black">Post Date</th><th><font size="3" color="black">Download Tools/Videos on Water Saving</th></tr>'
-        con = pymysql.connect(host='127.0.0.1',port = 3306,user = 'root', password = 'root', database = 'water',charset='utf8')
+        con = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
         with con:    
             cur = con.cursor()
-            cur.execute("select * FROM techniques")
+            cur.execute("SELECT name, technique, file, upload_date FROM techniques")
             rows = cur.fetchall()
             for row in rows:
                 name = row[0]
@@ -44,7 +53,7 @@ def AccessAdvice(request):
                 output+='<td><font size="3" color="black">'+upload_date+'</td>'
                 output +='<td><a href=\'Download?requester='+file+'\'><font size=3 color=black>Download</font></a></td></tr>'
         output += "</table><br/><br/><br/><br/>"    
-        context= {'data':output}
+        context = {'data': output}
         return render(request, 'UserScreen.html', context)    
 
 def AccessMap(request):
@@ -53,28 +62,34 @@ def AccessMap(request):
         areaname = areaname+" most drought areas"
         areaname = areaname.replace(" ","+")
         output = '<iframe width="800" height="650" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://maps.google.com/maps?q='+areaname+'&amp;ie=UTF8&amp;&amp;output=embed"></iframe><br/>'
-        context= {'data':output}
+        context = {'data': output}
         return render(request, 'UserScreen.html', context)
 
 def ShareKnowledgeAction(request):
     if request.method == 'POST':
-        global uname
+        uname = request.session.get('uname')
+        if not uname:
+            return render(request, 'UserLogin.html', {'data': 'Please login first to share knowledge'})
+            
         ideas = request.POST.get('t1', False)
-        ideas = ideas.replace("'","")
+        ideas = ideas.replace("'", "")
         myfile = request.FILES['t2'].read()
         fname = request.FILES['t2'].name
         dd = str(date.today())
-        db_connection = pymysql.connect(host='127.0.0.1',port = 3306,user = 'root', password = 'root', database = 'water',charset='utf8')
-        db_cursor = db_connection.cursor()
-        student_sql_query = "INSERT INTO techniques VALUES('"+uname+"','"+ideas+"','"+fname+"','"+dd+"')"
-        db_cursor.execute(student_sql_query)
-        db_connection.commit()
+        
+        db_connection = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
+        with db_connection:
+            db_cursor = db_connection.cursor()
+            student_sql_query = "INSERT INTO techniques (name, technique, file, upload_date) VALUES (%s, %s, %s, %s)"
+            db_cursor.execute(student_sql_query, (uname, ideas, fname, dd))
+            db_connection.commit()
+            
         if os.path.exists("WaterApp/static/files/"+fname):
             os.remove("WaterApp/static/files/"+fname)
         with open("WaterApp/static/files/"+fname, "wb") as file:
             file.write(myfile)
-        file.close()
-        context= {'data':"<font size=3 color=blue>Your technique successfully saved in Centralized server & Shared with other social users</font>"}
+            
+        context = {'data': "<font size=3 color=blue>Your technique successfully saved in Centralized server & Shared with other social users</font>"}
         return render(request, 'UserScreen.html', context)
 
 def ShareKnowledge(request):
@@ -87,6 +102,7 @@ def UserLogin(request):
 
 def index(request):
     if request.method == 'GET':
+       request.session.flush()
        return render(request, 'index.html', {})
 
 def Signup(request):
@@ -95,23 +111,21 @@ def Signup(request):
 
 def UserLoginAction(request):
     if request.method == 'POST':
-        global uname
         username = request.POST.get('t1', False)
         password = request.POST.get('t2', False)
         page = "UserLogin.html"
         status = "Invalid login"
-        con = pymysql.connect(host='127.0.0.1',port = 3306,user = 'root', password = 'root', database = 'water',charset='utf8')
+        con = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
         with con:
             cur = con.cursor()
-            cur.execute("select username,password FROM register")
-            rows = cur.fetchall()
-            for row in rows:
-                if row[0] == username and password == row[1]:
-                    uname = username
-                    status = "Welcome "+username
-                    page = "UserScreen.html"
-                    break		
-        context= {'data': status}
+            cur.execute("SELECT username, password FROM register WHERE username = %s AND password = %s", (username, password))
+            row = cur.fetchone()
+            if row:
+                request.session['uname'] = username
+                status = "Welcome " + username
+                page = "UserScreen.html"
+                
+        context = {'data': status}
         return render(request, page, context)
 
 def SignupAction(request):
@@ -122,24 +136,22 @@ def SignupAction(request):
         email = request.POST.get('t4', False)
         address = request.POST.get('t5', False)
         output = "none"
-        con = pymysql.connect(host='127.0.0.1',port = 3306,user = 'root', password = 'root', database = 'water',charset='utf8')
+        
+        con = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
         with con:
             cur = con.cursor()
-            cur.execute("select username FROM register")
-            rows = cur.fetchall()
-            for row in rows:
-                if row[0] == username:
-                    output = username+" Username already exists"
-                    break
-        if output == 'none':
-            db_connection = pymysql.connect(host='127.0.0.1',port = 3306,user = 'root', password = 'root', database = 'water',charset='utf8')
-            db_cursor = db_connection.cursor()
-            student_sql_query = "INSERT INTO register VALUES('"+username+"','"+password+"','"+contact+"','"+email+"','"+address+"')"
-            db_cursor.execute(student_sql_query)
-            db_connection.commit()
-            print(db_cursor.rowcount, "Record Inserted")
-            if db_cursor.rowcount == 1:
-                output = 'Signup Process Completed'
-        context= {'data':output}
+            cur.execute("SELECT username FROM register WHERE username = %s", (username,))
+            row = cur.fetchone()
+            if row:
+                output = username + " Username already exists"
+            else:
+                cur.execute("INSERT INTO register (username, password, contact, email, address) VALUES (%s, %s, %s, %s, %s)", 
+                            (username, password, contact, email, address))
+                con.commit()
+                print(cur.rowcount, "Record Inserted")
+                if cur.rowcount == 1:
+                    output = 'Signup Process Completed'
+                    
+        context = {'data': output}
         return render(request, 'Signup.html', context)
       

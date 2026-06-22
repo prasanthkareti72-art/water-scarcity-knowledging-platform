@@ -38,7 +38,7 @@
 	formObj.t4.focus();
 	return false;
 	}
-	var filter = /^([a-zA-Z0-9_\.\-])+\@([a-z]+\.)+(com)+$/;
+	var filter = /^([a-zA-Z0-9_\.\-])+\@([a-zA-Z0-9\-]+\.)+([a-zA-Z0-9]{2,4})+$/;
     if (!filter.test(formObj.t4.value)) {
 		window.alert('Please enter valid email address');
 		formObj.t4.focus();
