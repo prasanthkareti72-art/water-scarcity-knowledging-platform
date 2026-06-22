@@ -1,0 +1,41 @@
+{% load static %}
+<html>
+<head>
+<title>Water Scarcity Management</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="{% static 'style.css' %}" rel="stylesheet" type="text/css" />
+</head>
+<style>
+body {
+  background-image: url("{% static 'images/back.jpg' %}");
+}
+</style>
+<body>
+<div class="main">
+  <div class="main_resize">
+    <div class="header">
+      <div class="logo">
+        <h1><span>Water Scarcity Management through Centralized Knowledge-Sharing Platform</span><small></small></h1>
+      </div>
+    </div>
+    <div class="content">
+      <div class="content_bg">
+        <div class="menu_nav">
+          <ul>
+           <ul>
+      <li><a href="{% url 'index' %}"><font size="3" color="white">Home</font></a></li>
+	  <li><a href="{% url 'UserLogin' %}"><font size="3" color="white">User Login</font></a></li>
+	 <li><a href="{% url 'Signup' %}"><font size="3" color="white">New User Signup Here</font></a></li>
+   </ul>
+          </ul>
+        </div>
+        <div class="hbg"><img src="{% static 'images/header_images.jpg' %}" width="1010" height="200" alt="" /></div>
+
+		{{ data|safe }}
+
+       <p align="justify"><font size="3" style="font-family: Comic Sans MS" color="black">This platform would host peer-reviewed articles on water-saving techniques, community forums for sharing local knowledge, videos and interactive tools for calculating water usage and savings. Additionally, integrating social media sharing can amplify reach and engagement.
+
+</p>
+ 
+  </body>
+</html>
