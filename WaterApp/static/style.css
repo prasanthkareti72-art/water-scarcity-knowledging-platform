@@ -100,7 +100,7 @@ a.rm, a.com {
 	list-style:none;
 	margin:0;
 	padding:0;
-	background:url(images/main_top_bg.jpg) repeat-x;
+	background:url(images/main_top_bg.gif) repeat-x;
 	height:38px;
 }
 .menu_nav ul li {
@@ -237,7 +237,7 @@ ul.ex_menu li a:hover {
 .fbg .col {
 	margin:0;
 	float:left;
-	background:url(images/fbg_line1.gif) repeat-y right;
+	background:url(images/fbg_line.gif) repeat-y right;
 }
 .fbg .c1 {
 	padding:0 15px 0 0;

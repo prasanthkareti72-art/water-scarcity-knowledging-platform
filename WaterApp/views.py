@@ -4,9 +4,31 @@ from django.contrib import messages
 from django.http import HttpResponse
 import os
 from django.core.files.storage import FileSystemStorage
-import pymysql
+from django.db import connection
 from datetime import date
 import numpy as np
+
+def ensure_tables():
+    with connection.cursor() as cur:
+        # Create 'register' table if it doesn't exist
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS register (
+                username VARCHAR(50) PRIMARY KEY,
+                password VARCHAR(50),
+                contact VARCHAR(20),
+                email VARCHAR(70),
+                address VARCHAR(80)
+            )
+        """)
+        # Create 'techniques' table if it doesn't exist
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS techniques (
+                name VARCHAR(50),
+                technique TEXT,
+                file VARCHAR(255),
+                upload_date VARCHAR(50)
+            )
+        """)
 
 # Session initialization helper (compatibility)
 uname = None
@@ -39,9 +61,8 @@ def AccessAdvice(request):
     if request.method == 'GET':
         output = '<table border=1 align=center width=100%><tr><th><font size="3" color="black">Expert Name</th><th><font size="3" color="black">Water Saving Techniques & Ideas</th>'
         output+='<th><font size="3" color="black">Post Date</th><th><font size="3" color="black">Download Tools/Videos on Water Saving</th></tr>'
-        con = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
-        with con:    
-            cur = con.cursor()
+        ensure_tables()
+        with connection.cursor() as cur:
             cur.execute("SELECT name, technique, file, upload_date FROM techniques")
             rows = cur.fetchall()
             for row in rows:
@@ -54,7 +75,7 @@ def AccessAdvice(request):
                 output +='<td><a href=\'Download?requester='+file+'\'><font size=3 color=black>Download</font></a></td></tr>'
         output += "</table><br/><br/><br/><br/>"    
         context = {'data': output}
-        return render(request, 'UserScreen.html', context)    
+        return render(request, 'UserScreen.html', context)
 
 def AccessMap(request):
     if request.method == 'GET':
@@ -77,12 +98,10 @@ def ShareKnowledgeAction(request):
         fname = request.FILES['t2'].name
         dd = str(date.today())
         
-        db_connection = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
-        with db_connection:
-            db_cursor = db_connection.cursor()
+        ensure_tables()
+        with connection.cursor() as cur:
             student_sql_query = "INSERT INTO techniques (name, technique, file, upload_date) VALUES (%s, %s, %s, %s)"
-            db_cursor.execute(student_sql_query, (uname, ideas, fname, dd))
-            db_connection.commit()
+            cur.execute(student_sql_query, (uname, ideas, fname, dd))
             
         if os.path.exists("WaterApp/static/files/"+fname):
             os.remove("WaterApp/static/files/"+fname)
@@ -115,9 +134,8 @@ def UserLoginAction(request):
         password = request.POST.get('t2', False)
         page = "UserLogin.html"
         status = "Invalid login"
-        con = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
-        with con:
-            cur = con.cursor()
+        ensure_tables()
+        with connection.cursor() as cur:
             cur.execute("SELECT username, password FROM register WHERE username = %s AND password = %s", (username, password))
             row = cur.fetchone()
             if row:
@@ -137,9 +155,8 @@ def SignupAction(request):
         address = request.POST.get('t5', False)
         output = "none"
         
-        con = pymysql.connect(host='127.0.0.1', port=3306, user='root', password='root', database='water', charset='utf8')
-        with con:
-            cur = con.cursor()
+        ensure_tables()
+        with connection.cursor() as cur:
             cur.execute("SELECT username FROM register WHERE username = %s", (username,))
             row = cur.fetchone()
             if row:
@@ -147,7 +164,6 @@ def SignupAction(request):
             else:
                 cur.execute("INSERT INTO register (username, password, contact, email, address) VALUES (%s, %s, %s, %s, %s)", 
                             (username, password, contact, email, address))
-                con.commit()
                 print(cur.rowcount, "Record Inserted")
                 if cur.rowcount == 1:
                     output = 'Signup Process Completed'
