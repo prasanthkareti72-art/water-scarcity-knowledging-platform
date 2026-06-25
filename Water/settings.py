@@ -28,7 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://water-scarcity-knowledging-platform-production.up.railway.app",
+    "https://water-scarcity-knowledesharing-platform.up.railway.app",
 ]
 
 # Application definition
